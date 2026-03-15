@@ -140,6 +140,9 @@ impl Encoder {
         c.g_timebase.num = config.timebase[0];
         c.g_timebase.den = config.timebase[1];
         c.rc_target_bitrate = config.bitrate;
+        if config.quality.is_some() {
+            c.rc_end_usage = vpx_sys::vpx_rc_mode::VPX_CQ;
+        }
 
         c.g_threads = 8;
         c.g_error_resilient = VPX_ERROR_RESILIENT_DEFAULT;
@@ -156,6 +159,13 @@ impl Encoder {
                     0,
                     vpx_sys::VPX_ENCODER_ABI_VERSION as i32
                 ));
+                if let Some(q) = config.quality {
+                    call_vpx!(vpx_codec_control_(
+                        &mut ctx,
+                        vpx_sys::vp8e_enc_control_id::VP8E_SET_CQ_LEVEL as _,
+                        q as c_int
+                    ));
+                }
             }
             #[cfg(feature = "vp9")]
             VideoCodecId::VP9 => {
@@ -166,6 +176,13 @@ impl Encoder {
                     0,
                     vpx_sys::VPX_ENCODER_ABI_VERSION as i32
                 ));
+                if let Some(q) = config.quality {
+                    call_vpx!(vpx_codec_control_(
+                        &mut ctx,
+                        vpx_sys::vp8e_enc_control_id::VP8E_SET_CQ_LEVEL as _,
+                        q as c_int
+                    ));
+                }
                 // set encoder internal speed settings
                 call_vpx!(vpx_codec_control_(
                     &mut ctx,
@@ -188,7 +205,7 @@ impl Encoder {
         })
     }
 
-    pub fn encode(&mut self, pts: i64, data: &[u8]) -> Result<Packets> {
+    pub fn encode(&mut self, pts: i64, data: &[u8]) -> Result<Packets<'_>> {
         assert!(2 * data.len() >= 3 * self.width * self.height);
 
         let image = MaybeUninit::zeroed();
@@ -266,6 +283,8 @@ pub struct Config {
     pub timebase: [c_int; 2],
     /// The target bitrate (in kilobits per second).
     pub bitrate: c_uint,
+    /// Quality (CQ Level). If Some, enables constant quality mode.
+    pub quality: Option<c_uint>,
     /// The codec
     pub codec: VideoCodecId,
 }
@@ -304,7 +323,7 @@ pub struct Finish {
 }
 
 impl Finish {
-    pub fn next(&mut self) -> Result<Option<Frame>> {
+    pub fn next(&mut self) -> Result<Option<Frame<'_>>> {
         let mut tmp = Packets {
             ctx: &mut self.enc.ctx,
             iter: self.iter,

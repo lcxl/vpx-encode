@@ -8,7 +8,7 @@ version = "0.6.2"
 edition = "2018"
 
 [dependencies]
-env-libvpx-sys = "5.1.0"
+env-libvpx-sys = { git = "https://github.com/lcxl/env-libvpx-sys.git", tag = "v6.0.0" }
 thiserror = "1.0.33"
 
 [features]
@@ -17,4 +17,4 @@ backtrace = []
 ffi-generate = ["env-libvpx-sys/generate"]
 
 [package.metadata.docs.rs]
-features = [ "vp9" ]
+features = ["vp9"]

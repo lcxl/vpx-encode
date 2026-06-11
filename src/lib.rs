@@ -66,6 +66,14 @@ impl Default for VideoCodecId {
 
 pub struct Encoder {
     ctx: vpx_codec_ctx_t,
+    /// Snapshot of the encoder configuration handed to libvpx at init
+    /// time. Kept so runtime updates (`set_bitrate_cap_kbps` /
+    /// `reset_bitrate_cap`) can mutate a single field and re-apply the
+    /// whole struct through `vpx_codec_enc_config_set`.
+    cfg: vpx_codec_enc_cfg_t,
+    /// `rc_target_bitrate` (kbps) as configured at init time, used by
+    /// `reset_bitrate_cap` to restore the original ceiling.
+    initial_bitrate_kbps: c_uint,
     width: usize,
     height: usize,
 }
@@ -200,9 +208,28 @@ impl Encoder {
 
         Ok(Self {
             ctx,
+            cfg: c,
+            initial_bitrate_kbps: config.bitrate,
             width: config.width as usize,
             height: config.height as usize,
         })
+    }
+
+    /// Updates the target bitrate (kilobits per second) at runtime
+    /// without rebuilding the encoder.
+    ///
+    /// In constant-quality mode (`Config::quality` set → `VPX_CQ`),
+    /// `rc_target_bitrate` acts as a bitrate *cap*: encoding stays
+    /// quality-driven below the cap and is rate-limited above it.
+    pub fn set_bitrate_cap_kbps(&mut self, kbps: c_uint) -> Result<()> {
+        self.cfg.rc_target_bitrate = kbps;
+        call_vpx!(vpx_codec_enc_config_set(&mut self.ctx, &self.cfg));
+        Ok(())
+    }
+
+    /// Restores the target bitrate configured at `Encoder::new` time.
+    pub fn reset_bitrate_cap(&mut self) -> Result<()> {
+        self.set_bitrate_cap_kbps(self.initial_bitrate_kbps)
     }
 
     pub fn encode(&mut self, pts: i64, data: &[u8]) -> Result<Packets<'_>> {

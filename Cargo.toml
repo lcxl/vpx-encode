@@ -4,11 +4,11 @@ description = "Rust interface to libvpx encoder"
 repository = "https://github.com/astraw/vpx-encode"
 authors = ["Andrew Straw <strawman@astraw.com>", "Ram Kaniyur <quadrupleslap@gmail.com>"]
 license = "MIT"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2018"
 
 [dependencies]
-env-libvpx-sys = { git = "https://github.com/lcxl/env-libvpx-sys.git", tag = "v6.0.0" }
+env-libvpx-sys = { git = "https://github.com/lcxl/env-libvpx-sys.git", tag = "v6.0.1" }
 thiserror = "1.0.33"
 
 [features]
